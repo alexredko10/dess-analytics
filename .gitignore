@@ -1,0 +1,40 @@
+# Build output
+target/
+out/
+build/
+
+# Maven local/generated files
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Keep Maven wrapper scripts and config
+!mvnw
+!mvnw.cmd
+!.mvn/wrapper/maven-wrapper.properties
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+
+# Logs and runtime dumps
+*.log
+*.tmp
+*.pid
+hs_err_pid*
+replay_pid*
+*.dump
+*.dumpstream
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Local environment
+.env
+.env.*
+!.env.example
