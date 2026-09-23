@@ -75,7 +75,7 @@ class EnergyAnalyticsServiceTest {
                 new InverterSample(Instant.parse("2026-09-21T10:20:00Z"), 800.0, 700.0, null)
         );
 
-        assertThatThrownBy(() -> energyAnalyticsService.calculateMinBatterySoc(samples))
+        assertThatThrownBy(() -> energyAnalyticsService.calculateMaxBatterySoc(samples))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("No battery SOC values available");
     }

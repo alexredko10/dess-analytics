@@ -4,8 +4,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class KataApplication {
+public class DessAnalyticsApplication {
     public static void main(String[] args) {
-        SpringApplication.run(KataApplication.class, args);
+        SpringApplication.run(DessAnalyticsApplication.class, args);
     }
 }
+    
