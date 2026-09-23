@@ -4,15 +4,16 @@ import com.telematika.dessanalytics.analytics.domain.EnergySummary;
 import com.telematika.dessanalytics.analytics.domain.InverterSample;
 import com.telematika.dessanalytics.analytics.repository.TelemetryRepository;
 import com.telematika.dessanalytics.analytics.service.utils.EnergyCalculator;
+import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
+@Service
 public class EnergyAnalyticsService {
 
-    private static final double W_TO_KW = 1000.0;
     private final TelemetryRepository telemetryRepository;
 
     public EnergyAnalyticsService(TelemetryRepository telemetryRepository) {
