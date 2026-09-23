@@ -1,11 +1,16 @@
 package com.telematika.dessanalytics.analytics.service;
 
+import com.telematika.dessanalytics.analytics.domain.EnergySummary;
 import com.telematika.dessanalytics.analytics.domain.InverterSample;
+import com.telematika.dessanalytics.analytics.repository.InMemoryTelemetryRepository;
+import com.telematika.dessanalytics.analytics.repository.TelemetryRepository;
 import com.telematika.dessanalytics.analytics.service.utils.EnergyCalculator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
@@ -15,10 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class EnergyAnalyticsServiceTest {
 
     private EnergyAnalyticsService energyAnalyticsService;
-
+    @MockBean
+    private TelemetryRepository telemetryRepository;
     @BeforeEach
     void setUp() {
-        energyAnalyticsService = new EnergyAnalyticsService();
+        energyAnalyticsService = new EnergyAnalyticsService(telemetryRepository);
     }
 
     @Test
@@ -301,5 +307,188 @@ class EnergyAnalyticsServiceTest {
 
         assertEquals(0.5, pv, 1e-9);
         assertEquals(0.2, load, 1e-9);
+    }
+
+    @Test
+    void calculatesEnergySummary() {
+        List<InverterSample> samples = List.of(
+                new InverterSample(
+                        Instant.parse("2026-09-23T10:00:00Z"),
+                        1000.0,
+                        500.0,
+                        80.0
+                ),
+                new InverterSample(
+                        Instant.parse("2026-09-23T11:00:00Z"),
+                        1000.0,
+                        500.0,
+                        60.0
+                )
+        );
+
+        EnergySummary result = energyAnalyticsService.calculateSummary(samples);
+
+        assertThat(result.pvGeneratedKwh()).isEqualTo(1.0);
+        assertThat(result.loadConsumedKwh()).isEqualTo(0.5);
+        assertThat(result.minBatterySoc()).isEqualTo(60.0);
+        assertThat(result.maxBatterySoc()).isEqualTo(80.0);
+        assertThat(result.averageBatterySoc()).isEqualTo(70.0);
+    }
+
+    @Test
+    void findsSamplesInsideHalfOpenRange() {
+        Instant t9 = Instant.parse("2026-09-23T09:00:00Z");
+        Instant t10 = Instant.parse("2026-09-23T10:00:00Z");
+        Instant t11 = Instant.parse("2026-09-23T11:00:00Z");
+        Instant t12 = Instant.parse("2026-09-23T12:00:00Z");
+
+        InMemoryTelemetryRepository repository =
+                new InMemoryTelemetryRepository(List.of(
+                        new InverterSample(t9, 100.0, 100.0, 70.0),
+                        new InverterSample(t10, 200.0, 200.0, 69.0),
+                        new InverterSample(t11, 300.0, 300.0, 68.0),
+                        new InverterSample(t12, 400.0, 400.0, 67.0)
+                ));
+
+        List<InverterSample> result = repository.findSamples(t10, t12);
+
+        assertThat(result)
+                .extracting(InverterSample::timestamp)
+                .containsExactly(t10, t11);
+    }
+
+    @Test
+    void returnsSamplesSortedByTimestamp() {
+        Instant t10 = Instant.parse("2026-09-23T10:00:00Z");
+        Instant t11 = Instant.parse("2026-09-23T11:00:00Z");
+        Instant t12 = Instant.parse("2026-09-23T12:00:00Z");
+
+        InMemoryTelemetryRepository repository =
+                new InMemoryTelemetryRepository(List.of(
+                        new InverterSample(t12, 300.0, 300.0, 68.0),
+                        new InverterSample(t10, 100.0, 100.0, 70.0),
+                        new InverterSample(t11, 200.0, 200.0, 69.0)
+                ));
+
+        List<InverterSample> result =
+                repository.findSamples(t10, t12.plusSeconds(1));
+
+        assertThat(result)
+                .extracting(InverterSample::timestamp)
+                .containsExactly(t10, t11, t12);
+    }
+
+    @Test
+    void findsSamplesInsideRequestedRange() {
+        List<InverterSample> samples = List.of(
+                new InverterSample(Instant.parse("2026-09-23T10:00:00Z"), 1000.0, 500.0, 80.0),
+                new InverterSample(Instant.parse("2026-09-23T10:30:00Z"), 1000.0, 500.0, 69.0),
+                new InverterSample(Instant.parse("2026-09-23T11:00:00Z"), 1000.0, 500.0, 68.0)
+        );
+
+        TelemetryRepository repository =
+                new InMemoryTelemetryRepository(samples);
+
+        List<InverterSample> result = repository.findSamples(
+                Instant.parse("2026-09-23T10:00:00Z"),
+                Instant.parse("2026-09-23T11:00:00Z")
+        );
+
+        assertThat(result)
+                .extracting(InverterSample::timestamp)
+                .containsExactly(
+                        Instant.parse("2026-09-23T10:00:00Z"),
+                        Instant.parse("2026-09-23T10:30:00Z")
+                );
+    }
+
+    @Test
+    void calculatesSummaryForRequestedPeriod() {
+        List<InverterSample> samples = List.of(
+                new InverterSample(
+                        Instant.parse("2026-09-23T10:00:00Z"),
+                        1000.0,
+                        500.0,
+                        70.0
+                ),
+                new InverterSample(
+                        Instant.parse("2026-09-23T10:30:00Z"),
+                        1000.0,
+                        1000.0,
+                        60.0
+                ),
+                new InverterSample(
+                        Instant.parse("2026-09-23T11:00:00Z"),
+                        2000.0,
+                        500.0,
+                        50.0
+                )
+        );
+
+        TelemetryRepository repository =
+                new InMemoryTelemetryRepository(samples);
+
+        EnergyAnalyticsService service =
+                new EnergyAnalyticsService(repository);
+
+        EnergySummary summary = service.calculateSummary(
+                Instant.parse("2026-09-23T10:00:00Z"),
+                Instant.parse("2026-09-23T11:01:00Z")
+        );
+
+        assertThat(summary.pvGeneratedKwh()).isEqualTo(1.25);
+        assertThat(summary.loadConsumedKwh()).isEqualTo(0.75);
+
+        assertThat(summary.minBatterySoc()).isEqualTo(50.0);
+        assertThat(summary.maxBatterySoc()).isEqualTo(70.0);
+        assertThat(summary.averageBatterySoc()).isEqualTo(60.0);
+    }
+
+    @Test
+    void calculatesSummaryOnlyForSamplesInsideRequestedPeriod() {
+        List<InverterSample> samples = List.of(
+                new InverterSample(
+                        Instant.parse("2026-09-23T09:00:00Z"),
+                        9000.0,
+                        9000.0,
+                        10.0
+                ),
+                new InverterSample(
+                        Instant.parse("2026-09-23T10:00:00Z"),
+                        1000.0,
+                        500.0,
+                        70.0
+                ),
+                new InverterSample(
+                        Instant.parse("2026-09-23T11:00:00Z"),
+                        1000.0,
+                        500.0,
+                        60.0
+                ),
+                new InverterSample(
+                        Instant.parse("2026-09-23T12:00:00Z"),
+                        9000.0,
+                        9000.0,
+                        100.0
+                )
+        );
+
+        TelemetryRepository repository =
+                new InMemoryTelemetryRepository(samples);
+
+        EnergyAnalyticsService service =
+                new EnergyAnalyticsService(repository);
+
+        EnergySummary summary = service.calculateSummary(
+                Instant.parse("2026-09-23T10:00:00Z"),
+                Instant.parse("2026-09-23T12:00:00Z")
+        );
+
+        assertThat(summary.pvGeneratedKwh()).isEqualTo(1.0);
+        assertThat(summary.loadConsumedKwh()).isEqualTo(0.5);
+
+        assertThat(summary.minBatterySoc()).isEqualTo(60.0);
+        assertThat(summary.maxBatterySoc()).isEqualTo(70.0);
+        assertThat(summary.averageBatterySoc()).isEqualTo(65.0);
     }
 }

@@ -1,8 +1,11 @@
 package com.telematika.dessanalytics.analytics.service;
 
+import com.telematika.dessanalytics.analytics.domain.EnergySummary;
 import com.telematika.dessanalytics.analytics.domain.InverterSample;
+import com.telematika.dessanalytics.analytics.repository.TelemetryRepository;
 import com.telematika.dessanalytics.analytics.service.utils.EnergyCalculator;
 
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -10,6 +13,11 @@ import java.util.Objects;
 public class EnergyAnalyticsService {
 
     private static final double W_TO_KW = 1000.0;
+    private final TelemetryRepository telemetryRepository;
+
+    public EnergyAnalyticsService(TelemetryRepository telemetryRepository) {
+        this.telemetryRepository = telemetryRepository;
+    }
 
     /**
      * Calculates minimum battery SOC from the given samples
@@ -65,4 +73,18 @@ public class EnergyAnalyticsService {
         return EnergyCalculator.calculateEnergyKwh(samples, InverterSample::totalLoadW);
     }
 
+    public EnergySummary calculateSummary(List<InverterSample> samples) {
+        return new EnergySummary(
+                calculatePvEnergyKwh(samples),
+                calculateLoadConsumedKwh(samples),
+                calculateMinBatterySoc(samples),
+                calculateMaxBatterySoc(samples),
+                calculateAverageBatterySoc(samples)
+        );
+    }
+
+    public EnergySummary calculateSummary(Instant from, Instant to){
+        List<InverterSample> samples = telemetryRepository.findSamples(from, to);
+        return calculateSummary(samples);
+    }
 }
