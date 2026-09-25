@@ -1,5 +1,6 @@
 package com.telematika.dessanalytics.analytics.service;
 
+import com.telematika.dessanalytics.analytics.api.errors.NoTelemetryDataException;
 import com.telematika.dessanalytics.analytics.domain.EnergySummary;
 import com.telematika.dessanalytics.analytics.domain.InverterSample;
 import com.telematika.dessanalytics.analytics.repository.TelemetryRepository;
@@ -86,6 +87,9 @@ public class EnergyAnalyticsService {
 
     public EnergySummary calculateSummary(Instant from, Instant to){
         List<InverterSample> samples = telemetryRepository.findSamples(from, to);
+        if (samples.isEmpty()) {
+            throw new NoTelemetryDataException("No telemetry data available for requested period");
+        }
         return calculateSummary(samples);
     }
 }

@@ -1,4 +1,4 @@
-package com.telematika.dessanalytics.analytics.api;
+package com.telematika.dessanalytics.analytics.api.rest;
 
 import com.telematika.dessanalytics.analytics.domain.EnergySummary;
 import com.telematika.dessanalytics.analytics.service.EnergyAnalyticsService;

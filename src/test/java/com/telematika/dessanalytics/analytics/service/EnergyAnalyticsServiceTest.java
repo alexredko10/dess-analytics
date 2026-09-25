@@ -1,5 +1,6 @@
 package com.telematika.dessanalytics.analytics.service;
 
+import com.telematika.dessanalytics.analytics.api.errors.NoTelemetryDataException;
 import com.telematika.dessanalytics.analytics.domain.EnergySummary;
 import com.telematika.dessanalytics.analytics.domain.InverterSample;
 import com.telematika.dessanalytics.analytics.repository.InMemoryTelemetryRepository;
@@ -7,23 +8,23 @@ import com.telematika.dessanalytics.analytics.repository.TelemetryRepository;
 import com.telematika.dessanalytics.analytics.service.utils.EnergyCalculator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 
 
 class EnergyAnalyticsServiceTest {
-
-    private EnergyAnalyticsService energyAnalyticsService;
-    @MockBean
     private TelemetryRepository telemetryRepository;
+    private EnergyAnalyticsService energyAnalyticsService;
+
     @BeforeEach
     void setUp() {
+        telemetryRepository = mock(TelemetryRepository.class);
         energyAnalyticsService = new EnergyAnalyticsService(telemetryRepository);
     }
 
@@ -490,5 +491,15 @@ class EnergyAnalyticsServiceTest {
         assertThat(summary.minBatterySoc()).isEqualTo(60.0);
         assertThat(summary.maxBatterySoc()).isEqualTo(70.0);
         assertThat(summary.averageBatterySoc()).isEqualTo(65.0);
+    }
+
+    @Test
+    void shouldThrowWhenNoTelemetryExistsForRequestedPeriod() {
+        Instant from = Instant.parse("2026-01-01T00:00:00Z");
+        Instant to = Instant.parse("2026-01-01T00:00:01Z");
+
+        assertThatThrownBy(() -> energyAnalyticsService.calculateSummary(from, to))
+                .isInstanceOf(NoTelemetryDataException.class)
+                .hasMessage("No telemetry data available for requested period");
     }
 }
