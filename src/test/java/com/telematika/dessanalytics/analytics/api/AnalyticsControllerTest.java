@@ -104,14 +104,22 @@ class AnalyticsControllerTest {
     @Test
     void shouldReturn404WhenNoTelemetryData() throws Exception {
         when(energyService.calculateSummary(FROM, TO))
-                .thenThrow(new NoTelemetryDataException("No telemetry data available for requested period"));
+                .thenThrow(new NoTelemetryDataException(
+                        "No telemetry data available for requested period"
+                ));
 
         mockMvc.perform(get("/api/v1/analytics/summary")
                         .param("from", FROM.toString())
-                        .param("to",   TO.toString()))
+                        .param("to", TO.toString()))
                 .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.error").value("Not Found"))
-                .andExpect(jsonPath("$.message").value("No telemetry data available for requested period"));
+                .andExpect(jsonPath("$.message")
+                        .value("No telemetry data available for requested period"))
+                .andExpect(jsonPath("$.path")
+                        .value("/api/v1/analytics/summary"));
+
+        verify(energyService).calculateSummary(FROM, TO);
     }
 }
