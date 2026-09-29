@@ -1,12 +1,14 @@
 package com.telematika.dessanalytics.analytics.repository;
 
 import com.telematika.dessanalytics.analytics.domain.InverterSample;
+import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
+@Repository
 public class InMemoryTelemetryRepository implements TelemetryRepository {
     private final List<InverterSample> samples;
 
